@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.17/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+    
+    .game-container {
+      max-width: 800px;
+      width: 100%;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+    }
+    
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 15px;
+      perspective: 1000px;
+    }
+    
+    .card {
+      height: 120px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    
+    .flipped {
+      transform: rotateY(180deg);
+    }
+    
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.5rem;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .card-front {
+      background: linear-gradient(45deg, #5f2c82, #49a09d);
+      transform: rotateY(180deg);
+    }
+    
+    .card-back {
+      background: linear-gradient(45deg, #3a1c71, #d76d77);
+    }
+    
+    .game-completed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 10;
+      animation: fadeIn 0.5s;
+    }
+    
+    .completed-message {
+      background: linear-gradient(135deg, #00b09b, #96c93d);
+      padding: 40px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 90%;
+      width: 500px;
+    }
+    
+    .completed-title {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+    
+    .completed-stats {
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+    }
+    
+    .play-again-btn {
+      background-color: white;
+      color: #00b09b;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.2rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    
+    .play-again-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @media (max-width: 600px) {
+      .grid-container {
+        gap: 10px;
+      }
+      
+      .card {
+        height: 80px;
+      }
+      
+      .card-face {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const emojiCards = [
+      '🚀', '🎯', '🎸', '🎮', 
+      '🍕', '🦄', '🌈', '🍦',
+      '🚀', '🎯', '🎸', '🎮', 
+      '🍕', '🦄', '🌈', '🍦'
+    ];
+    
+    const App = () => {
+      const [cards, setCards] = React.useState([]);
+      const [flippedIndices, setFlippedIndices] = React.useState([]);
+      const [matchedPairs, setMatchedPairs] = React.useState([]);
+      const [moves, setMoves] = React.useState(0);
+      const [gameCompleted, setGameCompleted] = React.useState(false);
+      const [isChecking, setIsChecking] = React.useState(false);
+      
+      
+      React.useEffect(() => {
+        startNewGame();
+      }, []);
+      
+      const startNewGame = () => {
+        
+        const shuffledCards = [...emojiCards].sort(() => Math.random() - 0.5);
+        
+       
+        const newCards = shuffledCards.map((emoji, index) => ({
+          id: index,
+          emoji,
+          isFlipped: false,
+          isMatched: false
+        }));
+        
+        setCards(newCards);
+        setFlippedIndices([]);
+        setMatchedPairs([]);
+        setMoves(0);
+        setGameCompleted(false);
+      };
+      
+      const handleCardClick = (index) => {
+        if (
+          isChecking || 
+          flippedIndices.includes(index) || 
+          matchedPairs.includes(cards[index].emoji)
+        ) {
+          return;
+        }
+        
+    
+        const newFlippedIndices = [...flippedIndices, index];
+        setFlippedIndices(newFlippedIndices);
+        
+        
+        if (newFlippedIndices.length === 2) {
+          setMoves(prevMoves => prevMoves + 1);
+          setIsChecking(true);
+          
+          const [firstIndex, secondIndex] = newFlippedIndices;
+          const firstCard = cards[firstIndex];
+          const secondCard = cards[secondIndex];
+          
+          
+          if (firstCard.emoji === secondCard.emoji) {
+            
+            const newMatchedPairs = [...matchedPairs, firstCard.emoji];
+            setMatchedPairs(newMatchedPairs);
+            setFlippedIndices([]);
+            setIsChecking(false);
+            
+         
+            if (newMatchedPairs.length === emojiCards.length / 2) {
+              setGameCompleted(true);
+            }
+          } else {
+            
+            setTimeout(() => {
+              setFlippedIndices([]);
+              setIsChecking(false);
+            }, 1000);
+          }
+        }
+      };
+      
+      return (
+        <div className="game-container">
+          <div className="header">
+            <h1>Memory Game</h1>
+            <div className="stats">
+              <div className="moves">Moves: {moves}</div>
+              <div className="pairs">Pairs: {matchedPairs.length} / {emojiCards.length / 2}</div>
+            </div>
+          </div>
+          
+          <div className="grid-container">
+            {cards.map((card, index) => (
+              <div 
+                key={index}
+                className={`card ${(flippedIndices.includes(index) || matchedPairs.includes(card.emoji)) ? 'flipped' : ''}`}
+                onClick={() => handleCardClick(index)}
+              >
+                <div className="card-face card-back"></div>
+                <div className="card-face card-front">{card.emoji}</div>
+              </div>
+            ))}
+          </div>
+          
+          {gameCompleted && (
+            <div className="game-completed">
+              <div className="completed-message">
+                <h2 className="completed-title">¡Juego Completado!</h2>
+                <p className="completed-stats">Lo has completado en {moves} movimientos</p>
+                <button className="play-again-btn" onClick={startNewGame}>Jugar de nuevo</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+    
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
